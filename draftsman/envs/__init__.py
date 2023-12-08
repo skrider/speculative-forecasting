@@ -31,7 +31,7 @@ gym.register(
         "n_conversations": 1000,
         "max_tokens_guess": 16,
         "max_tokens": 256,
-        "tensor_parallel_size": 4,
+        "tensor_parallel_size": 2,
         "accepted_tokens_weight": 1.0,
         "rejected_tokens_weight": 1.0,
     },
