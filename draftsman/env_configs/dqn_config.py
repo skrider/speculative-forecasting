@@ -10,6 +10,7 @@ import torch.nn as nn
 from draftsman.env_configs.schedule import ConstantSchedule
 import draftsman.infrastructure.pytorch_util as ptu
 
+
 def basic_dqn_config(
     env_name: str,
     exp_name: Optional[str] = None,
@@ -22,7 +23,7 @@ def basic_dqn_config(
     clip_grad_norm: Optional[float] = None,
     use_double_q: bool = True,
     batch_size: int = 128,
-    **kwargs
+    **kwargs,
 ):
     def make_critic(observation_shape: Tuple[int, ...], num_actions: int) -> nn.Module:
         return ptu.build_mlp(
@@ -40,9 +41,7 @@ def basic_dqn_config(
     ) -> torch.optim.lr_scheduler._LRScheduler:
         return torch.optim.lr_scheduler.ConstantLR(optimizer, factor=1.0)
 
-    exploration_schedule = ConstantSchedule(
-        0.3
-    )
+    exploration_schedule = ConstantSchedule(0.3)
 
     def make_env():
         return RecordEpisodeStatistics(gym.make(env_name), 100)

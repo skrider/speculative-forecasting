@@ -5,6 +5,7 @@ import time
 import draftsman.env_configs
 from draftsman.infrastructure.logger import Logger
 
+
 def make_config(config_file: str) -> dict:
     config_kwargs = {}
     with open(config_file, "r") as f:
@@ -13,12 +14,13 @@ def make_config(config_file: str) -> dict:
     base_config_name = config_kwargs.pop("base_config")
     return draftsman.env_configs.configs[base_config_name](**config_kwargs)
 
+
 def make_logger(logdir_prefix: str, config: dict) -> Logger:
     data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../data")
 
     if not (os.path.exists(data_path)):
         os.makedirs(data_path)
-    
+
     logdir = (
         logdir_prefix + config["log_name"] + "_" + time.strftime("%d-%m-%Y_%H-%M-%S")
     )

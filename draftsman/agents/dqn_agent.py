@@ -11,7 +11,8 @@ import draftsman.infrastructure.pytorch_util as ptu
 class DQNAgent(nn.Module):
     def __init__(
         self,
-        observation_shape: Sequence[int], num_actions: int,
+        observation_shape: Sequence[int],
+        num_actions: int,
         make_critic: Callable[[Tuple[int, ...], int], nn.Module],
         make_optimizer: Callable[[torch.nn.ParameterList], torch.optim.Optimizer],
         make_lr_schedule: Callable[
@@ -82,8 +83,10 @@ class DQNAgent(nn.Module):
                 next_action = torch.argmax(self.critic(next_obs), dim=1)
             else:
                 next_action = torch.argmax(next_qa_values, dim=1)
-            
-            next_q_values = next_qa_values.gather(1, next_action.unsqueeze(1)).squeeze(1)
+
+            next_q_values = next_qa_values.gather(1, next_action.unsqueeze(1)).squeeze(
+                1
+            )
             target_values = reward + self.discount * next_q_values * (1 - done.float())
             assert next_q_values.shape == (batch_size,), next_q_values.shape
             assert target_values.shape == (batch_size,), target_values.shape

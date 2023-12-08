@@ -8,10 +8,12 @@ from typing import Callable, List, Tuple
 from draftsman.agents.dqn_agent import DQNAgent
 import draftsman.infrastructure.pytorch_util as ptu
 
+
 def init_network(model):
     if isinstance(model, nn.Linear):
         model.weight.data.normal_()
         model.bias.data.normal_()
+
 
 class RNDAgent(DQNAgent):
     def __init__(
@@ -22,7 +24,7 @@ class RNDAgent(DQNAgent):
         make_rnd_network_optimizer: Callable[[nn.ParameterList], torch.optim.Optimizer],
         make_target_rnd_network: Callable[[Tuple[int, ...]], nn.Module],
         rnd_weight: float,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             observation_shape=observation_shape, num_actions=num_actions, **kwargs
@@ -38,9 +40,7 @@ class RNDAgent(DQNAgent):
         for p in self.rnd_target_net.parameters():
             p.requires_grad_(False)
 
-        self.rnd_optimizer = make_rnd_network_optimizer(
-            self.rnd_net.parameters()
-        )
+        self.rnd_optimizer = make_rnd_network_optimizer(self.rnd_net.parameters())
 
     def update_rnd(self, obs: torch.Tensor) -> torch.Tensor:
         """
@@ -75,7 +75,9 @@ class RNDAgent(DQNAgent):
             assert rnd_error.shape == rewards.shape
             rewards = rewards + self.rnd_weight * rnd_error
 
-        metrics = super().update(observations, actions, rewards, next_observations, dones, step)
+        metrics = super().update(
+            observations, actions, rewards, next_observations, dones, step
+        )
 
         # Update the RND network.
         rnd_loss = self.update_rnd(observations)
@@ -85,7 +87,7 @@ class RNDAgent(DQNAgent):
 
     def num_aux_plots(self) -> int:
         return 1
-    
+
     def plot_aux(
         self,
         axes: List,
@@ -94,6 +96,7 @@ class RNDAgent(DQNAgent):
         Plot the RND prediction error for the observations.
         """
         import matplotlib.pyplot as plt
+
         assert len(axes) == 1
         ax: plt.Axes = axes[0]
 
@@ -112,5 +115,8 @@ class RNDAgent(DQNAgent):
 
             # Log scale, aligned with normal axes
             from matplotlib import cm
-            ax.imshow(ptu.to_numpy(errors).T, extent=[0, 1, 0, 1], origin="lower", cmap="hot")
+
+            ax.imshow(
+                ptu.to_numpy(errors).T, extent=[0, 1, 0, 1], origin="lower", cmap="hot"
+            )
             plt.colorbar(ax.images[0], ax=ax)

@@ -9,6 +9,6 @@ class RandomAgent:
 
     def get_action(self, *args, **kwargs):
         return np.random.randint(0, self.num_actions)
-    
+
     def update(self, *args, **kwargs):
         return {}

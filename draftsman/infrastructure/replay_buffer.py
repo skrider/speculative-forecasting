@@ -12,7 +12,9 @@ class ReplayBuffer:
         self.dones = None
 
     def sample(self, batch_size):
-        rand_indices = np.random.randint(0, self.size, size=(batch_size,)) % self.max_size
+        rand_indices = (
+            np.random.randint(0, self.size, size=(batch_size,)) % self.max_size
+        )
         return {
             "observations": self.observations[rand_indices],
             "actions": self.actions[rand_indices],
@@ -139,9 +141,7 @@ class MemoryEfficientReplayBuffer:
 
         Returns the index of the frame in the replay buffer.
         """
-        assert (
-            frame.ndim == 2
-        ), "Single-frame observation should have dimensions (H, W)"
+        assert frame.ndim == 2, "Single-frame observation should have dimensions (H, W)"
         assert frame.dtype == np.uint8, "Observation should be uint8 (0-255)"
 
         self.framebuffer[self.framebuffer_idx] = frame

@@ -25,6 +25,7 @@ MAX_NVIDEO = 2
 
 def visualize(env: Pointmass, agent, observations: torch.Tensor):
     import matplotlib.pyplot as plt
+
     fig = plt.figure(figsize=(10, 10))
 
     num_subplots = agent.num_aux_plots() + 1 if hasattr(agent, "num_aux_plots") else 1
@@ -32,11 +33,7 @@ def visualize(env: Pointmass, agent, observations: torch.Tensor):
     axes = fig.subplots(1, num_subplots)
     ax = axes[0] if num_subplots > 1 else axes
     env.plot_walls(ax)
-    ax.scatter(
-        observations[:, 0],
-        observations[:, 1],
-        alpha=0.1
-    )
+    ax.scatter(observations[:, 0], observations[:, 1], alpha=0.1)
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
 
@@ -166,18 +163,19 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
                 visualize(env_pointmass, agent, observations),
                 "exploration_trajectories",
                 step,
-                "eval"
+                "eval",
             )
-
 
     # Save the final dataset
     dataset_file = os.path.join(args.dataset_dir, f"{config['dataset_name']}.pkl")
     with open(dataset_file, "wb") as f:
         pickle.dump(replay_buffer, f)
         print("Saved dataset to", dataset_file)
-    
+
     # Render final heatmap
-    fig = visualize(env_pointmass, agent, replay_buffer.observations[:config["total_steps"]])
+    fig = visualize(
+        env_pointmass, agent, replay_buffer.observations[: config["total_steps"]]
+    )
     fig.suptitle("State coverage")
     filename = os.path.join("exploration_visualization", f"{config['log_name']}.png")
     fig.savefig(filename)
@@ -192,6 +190,7 @@ Generating the dataset for the {env} environment using algorithm {alg}.
 The results will be stored in {dataset_dir}.
 ======================================================================
 """
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -218,7 +217,11 @@ def main():
     logger = make_logger(logdir_prefix, config)
 
     os.makedirs(args.dataset_dir, exist_ok=True)
-    print(banner.format(env=config["env_name"], alg=config["agent"], dataset_dir=args.dataset_dir))
+    print(
+        banner.format(
+            env=config["env_name"], alg=config["agent"], dataset_dir=args.dataset_dir
+        )
+    )
 
     run_training_loop(config, logger, args)
 

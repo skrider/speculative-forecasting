@@ -16,7 +16,7 @@ class IQLAgent(AWACAgent):
             [torch.nn.ParameterList], torch.optim.Optimizer
         ],
         expectile: float,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             observation_shape=observation_shape, num_actions=num_actions, **kwargs
@@ -57,7 +57,9 @@ class IQLAgent(AWACAgent):
         Update Q(s, a)
         """
         qa_values = self.critic(observations)
-        discount_value = self.discount * self.target_value_critic(next_observations).squeeze(-1)
+        discount_value = self.discount * self.target_value_critic(
+            next_observations
+        ).squeeze(-1)
         target_values = rewards + discount_value * (1 - dones.float())
         selected_actions = actions.unsqueeze(-1)
         q_values = qa_values.gather(-1, selected_actions).squeeze(-1)
@@ -88,7 +90,7 @@ class IQLAgent(AWACAgent):
         """
         difference = target_qs - vs
         masked = torch.lt(difference, 0).float()
-        return (expectile - masked).abs() * difference ** 2
+        return (expectile - masked).abs() * difference**2
 
     def update_v(
         self,
@@ -131,7 +133,9 @@ class IQLAgent(AWACAgent):
         Update both Q(s, a) and V(s)
         """
 
-        metrics_q = self.update_q(observations, actions, rewards, next_observations, dones)
+        metrics_q = self.update_q(
+            observations, actions, rewards, next_observations, dones
+        )
         metrics_v = self.update_v(observations, actions)
 
         return {**metrics_q, **metrics_v}
@@ -145,13 +149,15 @@ class IQLAgent(AWACAgent):
         dones: torch.Tensor,
         step: int,
     ):
-        metrics = self.update_critic(observations, actions, rewards, next_observations, dones)
+        metrics = self.update_critic(
+            observations, actions, rewards, next_observations, dones
+        )
         metrics["actor_loss"] = self.update_actor(observations, actions)
 
         if step % self.target_update_period == 0:
             self.update_target_critic()
             self.update_target_value_critic()
-        
+
         return metrics
 
     def update_target_value_critic(self):

@@ -44,8 +44,8 @@ def iql_config(
         n_layers=num_layers,
         size=hidden_size,
     )
-    config["agent_kwargs"][
-        "make_value_critic_optimizer"
-    ] = lambda params: torch.optim.Adam(params, lr=learning_rate)
+    config["agent_kwargs"]["make_value_critic_optimizer"] = (
+        lambda params: torch.optim.Adam(params, lr=learning_rate)
+    )
 
     return config

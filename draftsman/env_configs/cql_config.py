@@ -10,6 +10,7 @@ import torch.nn as nn
 from draftsman.env_configs.dqn_config import basic_dqn_config
 import draftsman.infrastructure.pytorch_util as ptu
 
+
 def cql_config(
     cql_alpha: float = 1.0,
     cql_temperature: float = 1.0,

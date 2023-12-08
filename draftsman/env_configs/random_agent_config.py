@@ -4,14 +4,9 @@ from gym.wrappers.time_limit import TimeLimit
 
 from typing import Optional
 
-def random_agent_config(
-    env_name: str,
-    exp_name: Optional[str] = None,
-    **kwargs
-):
-    log_string = "{env_name}_random".format(
-        env_name=env_name
-    )
+
+def random_agent_config(env_name: str, exp_name: Optional[str] = None, **kwargs):
+    log_string = "{env_name}_random".format(env_name=env_name)
 
     return {
         "agent": "random",

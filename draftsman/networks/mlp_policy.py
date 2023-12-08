@@ -6,7 +6,11 @@ import torch
 from torch import distributions
 
 from draftsman.infrastructure import pytorch_util as ptu
-from draftsman.infrastructure.distributions import make_tanh_transformed, make_multi_normal
+from draftsman.infrastructure.distributions import (
+    make_tanh_transformed,
+    make_multi_normal,
+)
+
 
 class MLPPolicy(nn.Module):
     """
@@ -45,7 +49,7 @@ class MLPPolicy(nn.Module):
                 assert fixed_std is None
                 self.net = ptu.build_mlp(
                     input_size=ob_dim,
-                    output_size=2*ac_dim,
+                    output_size=2 * ac_dim,
                     n_layers=n_layers,
                     size=layer_size,
                 ).to(ptu.device)
@@ -61,9 +65,10 @@ class MLPPolicy(nn.Module):
                     self.std = 0.1
                 else:
                     self.std = nn.Parameter(
-                        torch.full((ac_dim,), 0.0, dtype=torch.float32, device=ptu.device)
+                        torch.full(
+                            (ac_dim,), 0.0, dtype=torch.float32, device=ptu.device
+                        )
                     )
-
 
     def forward(self, obs: torch.FloatTensor) -> distributions.Distribution:
         """
@@ -91,4 +96,3 @@ class MLPPolicy(nn.Module):
                 return make_multi_normal(mean, std)
 
         return action_distribution
- 

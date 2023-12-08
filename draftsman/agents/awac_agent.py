@@ -5,6 +5,7 @@ from torch import nn
 
 from draftsman.agents.dqn_agent import DQNAgent
 
+
 class AWACAgent(DQNAgent):
     def __init__(
         self,
@@ -15,7 +16,9 @@ class AWACAgent(DQNAgent):
         temperature: float,
         **kwargs,
     ):
-        super().__init__(observation_shape=observation_shape, num_actions=num_actions, **kwargs)
+        super().__init__(
+            observation_shape=observation_shape, num_actions=num_actions, **kwargs
+        )
 
         self.actor = make_actor(observation_shape, num_actions)
         self.actor_optimizer = make_actor_optimizer(self.actor.parameters())
@@ -38,7 +41,9 @@ class AWACAgent(DQNAgent):
             # TODO(student): Compute the TD target
             target_values = rewards + self.discount * qa_values * (1 - dones.float())
 
-        q_values = self.critic(observations).gather(1, actions.unsqueeze(-1)).squeeze(-1)
+        q_values = (
+            self.critic(observations).gather(1, actions.unsqueeze(-1)).squeeze(-1)
+        )
         assert q_values.shape == target_values.shape
         loss = self.critic_loss(q_values, target_values)
 
@@ -81,7 +86,11 @@ class AWACAgent(DQNAgent):
         action_logprobs = self.actor(observations).log_prob(actions)
         with torch.no_grad():
             advantages = self.compute_advantage(observations, actions)
-        loss = -(action_logprobs * self.temperature * torch.exp(advantages / self.temperature)).mean()
+        loss = -(
+            action_logprobs
+            * self.temperature
+            * torch.exp(advantages / self.temperature)
+        ).mean()
 
         self.actor_optimizer.zero_grad()
         loss.backward()
@@ -89,8 +98,18 @@ class AWACAgent(DQNAgent):
 
         return loss.item()
 
-    def _update(self, observations: torch.Tensor, actions: torch.Tensor, rewards: torch.Tensor, next_observations: torch.Tensor, dones: torch.Tensor, step: int):
-        metrics = super().update(observations, actions, rewards, next_observations, dones, step)
+    def _update(
+        self,
+        observations: torch.Tensor,
+        actions: torch.Tensor,
+        rewards: torch.Tensor,
+        next_observations: torch.Tensor,
+        dones: torch.Tensor,
+        step: int,
+    ):
+        metrics = super().update(
+            observations, actions, rewards, next_observations, dones, step
+        )
 
         # Update the actor.
         actor_loss = self.update_actor(observations, actions)
