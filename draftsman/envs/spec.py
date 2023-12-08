@@ -25,12 +25,14 @@ class SpeculativeDecoding(gym.Env):
         max_tokens_guess: int,
         accepted_tokens_weight: float = 1.0,
         rejected_tokens_weight: float = 1.0,
+        tensor_parallel_size: int = 1,
         max_tokens: int = 100,
     ):
-        self.main_llm = ray.remote(num_gpus=1)(LLM).remote(
+        self.main_llm = ray.remote(num_gpus=(1 if tensor_parallel_size == 1 else 0))(LLM).remote(
             model=main_model_path,
             tokenizer=tokenizer,
             max_num_seqs=max_tokens_guess,
+            tensor_parallel_size=tensor_parallel_size,
             trust_remote_code=True,
             dtype="half",
             gpu_memory_utilization=0.9,
