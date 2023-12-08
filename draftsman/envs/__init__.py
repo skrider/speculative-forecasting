@@ -7,7 +7,7 @@ gym.register(
     entry_point=SpeculativeDecoding,
     kwargs={
         "draft_model_path": "JackFram/llama-160m",
-        "main_model_path": "JackFram/llama-160m",
+        "main_model_path": "meta-llama/Llama-2-7b-hf",
         "tokenizer": "JackFram/llama-160m",
         "conversations_path": "datasets/chatbot-arena.parquet",
         "n_conversations": 1000,

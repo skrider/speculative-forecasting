@@ -1,5 +1,5 @@
 base_config: "random"
 env_name: "SpeculativeDecoding-v0"
 exp_name: "spec_dqn"
-total_steps: 400000
+total_steps: 200000
 dataset_name: "speculative_decoding"

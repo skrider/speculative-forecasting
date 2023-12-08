@@ -22,6 +22,7 @@ import draftsman.envs as _
 from scripting_utils import make_logger, make_config
 
 def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
+    dataset_name = f"{config['dataset_name']}_{int(time.time())}"
     # set random seeds
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -129,12 +130,12 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
                 logger.log_scalar(np.max(ep_lens), "eval/ep_len_max", step)
                 logger.log_scalar(np.min(ep_lens), "eval/ep_len_min", step)
 
-            dataset_file = os.path.join(args.dataset_dir, f"{config['dataset_name']}.pkl")
+            dataset_file = os.path.join(args.dataset_dir, f"{dataset_name}.pkl")
             with open(dataset_file, "wb") as f:
                 pickle.dump(replay_buffer, f)
                 print("Saved dataset to", dataset_file)
                 
-    dataset_file = os.path.join(args.dataset_dir, f"{config['dataset_name']}.pkl")
+    dataset_file = os.path.join(args.dataset_dir, f"{dataset_name}.pkl")
     with open(dataset_file, "wb") as f:
         pickle.dump(replay_buffer, f)
         print("Saved dataset to", dataset_file)
