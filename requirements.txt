@@ -19,3 +19,4 @@ ray
 pandas
 pyarrow
 transformers
+tokenizers
