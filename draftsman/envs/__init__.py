@@ -9,7 +9,7 @@ gym.register(
         "draft_model_path": "JackFram/llama-160m",
         "main_model_path": "JackFram/llama-160m",
         "tokenizer": "meta-llama/Llama-2-7b",
-        "conversations_path": "datasets/conversations.parquet",
+        "conversations_path": "datasets/chatbot-arena.parquet",
         "n_conversations": 1,
         "max_tokens_guess": 10,
         "max_tokens": 256,

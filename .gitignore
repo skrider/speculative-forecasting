@@ -1,2 +1,3 @@
 draftsman.egg-info
 **/__pycache__
+datasets/chatbot-arena.parquet

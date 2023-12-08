@@ -79,8 +79,9 @@ class SpeculativeDecoding(gym.Env):
 
     def reset(self):
         conversation_index = np.random.randint(self.n_conversations)
-        self.conversation = self.conversations_df.iloc[conversation_index]
-        self.tokens = self.tokenizer.encode(self.conversation["text"])["input_ids"]
+        indexer = self.conversations_df.loc()
+        self.prompt = indexer[conversation_index].conversation_a[0].content
+        self.tokens = self.tokenizer.encode(self.prompt)["input_ids"]
 
         last_hidden = self._get_draft_last_hidden()
         obs = np.concatenate((
