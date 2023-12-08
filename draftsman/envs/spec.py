@@ -38,6 +38,7 @@ class SpeculativeDecoding(gym.Env):
         self.main_sp = SamplingParams(n=1, temperature=0., max_tokens=1)
         self.num_actions = max_tokens_guess
         self.max_tokens = max_tokens
+        self.max_episode_steps = max_tokens
 
         # TODO add cache
         # TODO enable flash attention
@@ -69,48 +70,53 @@ class SpeculativeDecoding(gym.Env):
     def _get_draft_last_hidden(self):
         with torch.no_grad():
             draft_out = self.draft_llm(
-                input_ids=self.tokens, 
+                input_ids=self.tokens.unsqueeze(0), 
                 output_hidden_states=True, 
                 use_cache=False)
 
         # get last hidden state
-        __import__('pdb').set_trace()
-        return draft_out.hidden_states[0, -1, :].detach().cpu().numpy()
+        return draft_out.hidden_states[-1][0, -1, :].detach().cpu().numpy()
 
     def reset(self):
         conversation_index = np.random.randint(self.n_conversations)
         indexer = self.conversations_df.loc()
-        self.prompt = indexer[conversation_index].conversation_a[0].content
-        self.tokens = self.tokenizer.encode(self.prompt)["input_ids"]
+        self.prompt = indexer[conversation_index].conversation_a[0]["content"]
+        self.tokens = torch.as_tensor(self.tokenizer.encode(self.prompt)).to(ptu.device)
 
         last_hidden = self._get_draft_last_hidden()
         obs = np.concatenate((
-            last_hidden.detach().cpu().numpy(),
-            np.array([0, 0]).cast(float)
+            last_hidden,
+            np.array([0., 0.])
         ))
         return obs
+
+    def _tokens_list(self):
+        return self.tokens.cpu().numpy().tolist()
 
     def step(self, action):
         # generate draft
         num_tokens = action
-        draft = []
-        draft_out = self.draft_llm.generate(
-            input_ids=[self.tokens],
-            max_new_tokens=num_tokens,
-            num_return_sequences=1,
-            temperature=0.,
-            use_tqdm=False,
-            use_cache=True,
-        )
-        # clear cache
-        self.draft_llm._generate_cache = {}
+        if num_tokens > 0:
+            draft_out = self.draft_llm.generate(
+                input_ids=self.tokens.unsqueeze(0),
+                max_new_tokens=num_tokens,
+                num_return_sequences=1,
+                use_cache=True,
+                do_sample=False,
+            )
+            draft = draft_out.squeeze(0)[self.tokens.shape[0]:].cpu().numpy().tolist()
+        else:
+            draft = []
         
         accepted_draft, done = self._main_model_step_deterministic(
-            self.tokens, draft
+            self._tokens_list(), draft
         )
 
         # update tokens
-        self.tokens += accepted_draft
+        self.tokens = torch.cat((
+            self.tokens, 
+            torch.as_tensor(accepted_draft).to(ptu.device)
+        ))
 
         draft_accepted_tokens = len(accepted_draft) - 1
         draft_wasted_tokens = len(draft) - draft_accepted_tokens
@@ -122,7 +128,7 @@ class SpeculativeDecoding(gym.Env):
         # append accepted and wasted tokens
         obs = np.concatenate((
             last_hidden_state,
-            np.array([draft_accepted_tokens, draft_wasted_tokens]).cast(float)
+            np.array([draft_accepted_tokens, draft_wasted_tokens]).astype(np.float32)
         ))
         
         done = done or len(self.tokens) >= self.max_tokens

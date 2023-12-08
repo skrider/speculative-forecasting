@@ -17,6 +17,7 @@ import tqdm
 from draftsman.infrastructure import utils
 from draftsman.infrastructure.logger import Logger
 from draftsman.infrastructure.replay_buffer import ReplayBuffer
+import draftsman.envs as _
 
 from scripting_utils import make_logger, make_config
 
@@ -128,12 +129,22 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
                 logger.log_scalar(np.max(ep_lens), "eval/ep_len_max", step)
                 logger.log_scalar(np.min(ep_lens), "eval/ep_len_min", step)
 
+            dataset_file = os.path.join(args.dataset_dir, f"{config['dataset_name']}.pkl")
+            with open(dataset_file, "wb") as f:
+                pickle.dump(replay_buffer, f)
+                print("Saved dataset to", dataset_file)
+                
+    dataset_file = os.path.join(args.dataset_dir, f"{config['dataset_name']}.pkl")
+    with open(dataset_file, "wb") as f:
+        pickle.dump(replay_buffer, f)
+        print("Saved dataset to", dataset_file)
+
+
 banner = """
 ======================================================================
 Draftsman
 
 Training an agent for the {env} environment using algorithm {alg}.
-The results will be stored in {dataset_dir}.
 ======================================================================
 """
 
@@ -149,12 +160,14 @@ def main():
     parser.add_argument("--no_gpu", "-ngpu", action="store_true")
     parser.add_argument("--which_gpu", "-gpu_id", default=0)
     parser.add_argument("--log_interval", type=int, default=1)
-
-    parser.add_argument("--dataset", type=str, required=True)
+    parser.add_argument("--dataset_dir", type=str, required=True)
 
     args = parser.parse_args()
 
-    ray.init()
+    runtime_env = {
+        "env_vars": {"HUGGING_FACE_HUB_TOKEN": os.getenv("HUGGING_FACE_HUB_TOKEN")}
+    }
+    ray.init(runtime_env=runtime_env)
 
     # create directory for logging
     logdir_prefix = "draftsman_"  # keep for autograder
@@ -162,12 +175,7 @@ def main():
     config = make_config(args.config_file)
     logger = make_logger(logdir_prefix, config)
 
-    os.makedirs(args.dataset_dir, exist_ok=True)
-    print(
-        banner.format(
-            env=config["env_name"], alg=config["agent"], dataset_dir=args.dataset_dir
-        )
-    )
+    print(banner.format(env=config["env_name"], alg=config["agent"]))
 
     run_training_loop(config, logger, args)
 
