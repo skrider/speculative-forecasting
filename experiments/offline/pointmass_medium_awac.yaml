@@ -1,0 +1,10 @@
+base_config: "awac"
+env_name: "PointmassMedium-v0"
+exp_name: "pointmass_medium_awac"
+training_steps: 200000
+dataset_name: "pointmass_medium_rnd"
+
+temperature: 1.0
+
+hidden_size: 64
+num_layers: 2

@@ -1,0 +1,7 @@
+base_config: "rnd"
+env_name: "PointmassHard-v0"
+exp_name: "pointmass_hard_rnd"
+rnd_weight: 2.0
+rnd_network_learning_rate: 0.01
+dataset_name: "pointmass_hard_rnd_lr01"
+total_steps: 20000

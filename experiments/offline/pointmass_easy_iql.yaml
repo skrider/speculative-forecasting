@@ -1,0 +1,8 @@
+base_config: "iql"
+env_name: "PointmassEasy-v0"
+exp_name: "pointmass_easy_iql"
+training_steps: 100000
+dataset_name: "pointmass_easy_rnd"
+
+hidden_size: 64
+num_layers: 2

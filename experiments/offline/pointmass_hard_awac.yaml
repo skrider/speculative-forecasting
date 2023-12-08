@@ -1,0 +1,10 @@
+base_config: "awac"
+env_name: "PointmassHard-v0"
+exp_name: "pointmass_hard_dqn_t08"
+training_steps: 200000
+dataset_name: "pointmass_hard_rnd_10_3"
+
+temperature: 0.5
+
+hidden_size: 64
+num_layers: 2
