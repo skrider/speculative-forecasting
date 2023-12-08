@@ -1,7 +1,7 @@
 from typing import Optional
 import torch
 from torch import nn
-from cs285.agents.awac_agent import AWACAgent
+from draftsman.agents.awac_agent import AWACAgent
 
 from typing import Callable, Optional, Sequence, Tuple, List
 

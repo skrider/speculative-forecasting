@@ -7,8 +7,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from cs285.env_configs.dqn_config import basic_dqn_config
-import cs285.infrastructure.pytorch_util as ptu
+from draftsman.env_configs.dqn_config import basic_dqn_config
+import draftsman.infrastructure.pytorch_util as ptu
 
 def cql_config(
     cql_alpha: float = 1.0,

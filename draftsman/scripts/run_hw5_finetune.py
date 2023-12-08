@@ -2,8 +2,8 @@ import time
 import argparse
 import pickle
 
-from cs285.agents import agents as agent_types
-from cs285.envs import Pointmass
+from draftsman.agents import agents as agent_types
+from draftsman.envs import Pointmass
 
 import os
 import time
@@ -11,12 +11,12 @@ import time
 import gym
 import numpy as np
 import torch
-from cs285.infrastructure import pytorch_util as ptu
+from draftsman.infrastructure import pytorch_util as ptu
 import tqdm
 
-from cs285.infrastructure import utils
-from cs285.infrastructure.logger import Logger
-from cs285.infrastructure.replay_buffer import ReplayBuffer
+from draftsman.infrastructure import utils
+from draftsman.infrastructure.logger import Logger
+from draftsman.infrastructure.replay_buffer import ReplayBuffer
 
 from scripting_utils import make_logger, make_config
 from run_hw5_explore import visualize

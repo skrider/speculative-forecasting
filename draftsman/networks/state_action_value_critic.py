@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-import cs285.infrastructure.pytorch_util as ptu
+import draftsman.infrastructure.pytorch_util as ptu
 
 class StateActionCritic(nn.Module):
     def __init__(self, ob_dim, ac_dim, n_layers, size):

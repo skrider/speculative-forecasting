@@ -3,7 +3,7 @@ from typing import Callable, Optional, Sequence, Tuple, List
 import torch
 from torch import nn
 
-from cs285.agents.dqn_agent import DQNAgent
+from draftsman.agents.dqn_agent import DQNAgent
 
 class AWACAgent(DQNAgent):
     def __init__(

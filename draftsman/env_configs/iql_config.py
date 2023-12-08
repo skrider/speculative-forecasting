@@ -7,8 +7,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from cs285.env_configs.awac_config import awac_config
-import cs285.infrastructure.pytorch_util as ptu
+from draftsman.env_configs.awac_config import awac_config
+import draftsman.infrastructure.pytorch_util as ptu
 
 
 def iql_config(

@@ -5,8 +5,8 @@ import numpy as np
 
 from typing import Callable, List, Tuple
 
-from cs285.agents.dqn_agent import DQNAgent
-import cs285.infrastructure.pytorch_util as ptu
+from draftsman.agents.dqn_agent import DQNAgent
+import draftsman.infrastructure.pytorch_util as ptu
 
 def init_network(model):
     if isinstance(model, nn.Linear):

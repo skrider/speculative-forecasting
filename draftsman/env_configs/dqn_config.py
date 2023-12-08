@@ -7,8 +7,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from cs285.env_configs.schedule import ConstantSchedule
-import cs285.infrastructure.pytorch_util as ptu
+from draftsman.env_configs.schedule import ConstantSchedule
+import draftsman.infrastructure.pytorch_util as ptu
 
 def basic_dqn_config(
     env_name: str,

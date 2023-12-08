@@ -5,7 +5,7 @@ from torch import nn
 
 import numpy as np
 
-import cs285.infrastructure.pytorch_util as ptu
+import draftsman.infrastructure.pytorch_util as ptu
 
 
 class DQNAgent(nn.Module):

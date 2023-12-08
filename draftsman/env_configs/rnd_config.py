@@ -1,6 +1,6 @@
 import torch
-from cs285.env_configs.dqn_config import basic_dqn_config
-from cs285.infrastructure import pytorch_util as ptu
+from draftsman.env_configs.dqn_config import basic_dqn_config
+from draftsman.infrastructure import pytorch_util as ptu
 
 
 def rnd_config(

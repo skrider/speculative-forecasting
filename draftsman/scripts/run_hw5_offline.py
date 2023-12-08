@@ -2,9 +2,9 @@ import pickle
 import time
 import argparse
 
-from cs285.agents.dqn_agent import DQNAgent
-import cs285.env_configs
-from cs285.envs import Pointmass
+from draftsman.agents.dqn_agent import DQNAgent
+import draftsman.env_configs
+from draftsman.envs import Pointmass
 
 import os
 import time
@@ -13,13 +13,13 @@ import gym
 from gym import wrappers
 import numpy as np
 import torch
-from cs285.infrastructure import pytorch_util as ptu
+from draftsman.infrastructure import pytorch_util as ptu
 import tqdm
 
-from cs285.agents import agents
-from cs285.infrastructure import utils
-from cs285.infrastructure.logger import Logger
-from cs285.infrastructure.replay_buffer import MemoryEfficientReplayBuffer, ReplayBuffer
+from draftsman.agents import agents
+from draftsman.infrastructure import utils
+from draftsman.infrastructure.logger import Logger
+from draftsman.infrastructure.replay_buffer import MemoryEfficientReplayBuffer, ReplayBuffer
 
 from scripting_utils import make_logger, make_config
 

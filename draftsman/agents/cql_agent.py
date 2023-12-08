@@ -5,8 +5,8 @@ from torch import nn
 
 import numpy as np
 
-import cs285.infrastructure.pytorch_util as ptu
-from cs285.agents.dqn_agent import DQNAgent
+import draftsman.infrastructure.pytorch_util as ptu
+from draftsman.agents.dqn_agent import DQNAgent
 
 
 class CQLAgent(DQNAgent):

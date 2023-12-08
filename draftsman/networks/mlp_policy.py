@@ -5,8 +5,8 @@ from torch import nn
 import torch
 from torch import distributions
 
-from cs285.infrastructure import pytorch_util as ptu
-from cs285.infrastructure.distributions import make_tanh_transformed, make_multi_normal
+from draftsman.infrastructure import pytorch_util as ptu
+from draftsman.infrastructure.distributions import make_tanh_transformed, make_multi_normal
 
 class MLPPolicy(nn.Module):
     """

@@ -2,8 +2,8 @@ import yaml
 import os
 import time
 
-import cs285.env_configs
-from cs285.infrastructure.logger import Logger
+import draftsman.env_configs
+from draftsman.infrastructure.logger import Logger
 
 def make_config(config_file: str) -> dict:
     config_kwargs = {}
@@ -11,7 +11,7 @@ def make_config(config_file: str) -> dict:
         config_kwargs = yaml.load(f, Loader=yaml.SafeLoader)
 
     base_config_name = config_kwargs.pop("base_config")
-    return cs285.env_configs.configs[base_config_name](**config_kwargs)
+    return draftsman.env_configs.configs[base_config_name](**config_kwargs)
 
 def make_logger(logdir_prefix: str, config: dict) -> Logger:
     data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../data")
