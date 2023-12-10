@@ -83,7 +83,7 @@ class SpeculativeDecoding(gym.Env):
         conversation_index = np.random.randint(self.n_conversations)
         indexer = self.conversations_df.loc()
         self.prompt = indexer[conversation_index].text
-        self.tokens = torch.as_tensor(self.tokenizer.encode(self.prompt)).to(ptu.device)
+        self.tokens = indexer[conversation_index].tokens
 
         last_hidden = self._get_draft_last_hidden()
         obs = np.concatenate((
