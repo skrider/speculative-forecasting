@@ -38,9 +38,9 @@ def main(args):
             "tokens": input_ids.tolist()
         }
 
-        dataset_processed.append(acc)
+        dataset_processed.append(item)
     # save as dataframe
-    df = pd.DataFrame(dataset_processed, columns=['text'])
+    df = pd.DataFrame(dataset_processed, columns=['text', 'tokens'])
     # save as parquet
     df.to_parquet(dataset_out)
 

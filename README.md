@@ -18,7 +18,13 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-Obtain a copy of `chatbot-arena.parquet` and place it in `datasets`
+Get dataset:
+
+```
+bash scripts/download_chatbot_arena.sh
+python process_chatbot_arena.py /tmp/dataset.json datasets/chatbot_arena_2.parquet
+```
+
 
 ## Run single node, multi GPU
 

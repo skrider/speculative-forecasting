@@ -9,6 +9,37 @@ import pandas as pd
 from transformers import LlamaForCausalLM, LlamaTokenizerFast
 from draftsman.infrastructure import pytorch_util as ptu
 
+class GPUActor:
+    def __init__(self, model_path: str):
+        self.model = LlamaForCausalLM.from_pretrained(model_path, use_cache=False)
+        self.model.eval()
+        self.model.cuda()
+        self.model.half()
+    def spec_step_deterministic(self, draft):
+        main_prompts = [prefix]
+        for i in range(len(draft)):
+            main_prompts += [prefix + draft[: i + 1]]
+        
+        main_run = self.main_llm.generate.remote(
+            prompt_token_ids=main_prompts, 
+            sampling_params=self.main_sp, 
+            use_tqdm=False
+        )
+        main_run = ray.get(main_run)
+
+        n = 0
+        sampled_token = main_run[0].outputs[0].token_ids[0]
+        for i, x in enumerate(draft):
+            sampled_token = main_run[i].outputs[0].token_ids[0]
+            if x == sampled_token:
+                n += 1
+            else:
+                break
+
+        done = main_run[n].outputs[0].finish_reason != "length"
+
+        return draft[:n] + [sampled_token], done
+        
 
 class SpeculativeDecoding(gym.Env):
     """
@@ -83,7 +114,7 @@ class SpeculativeDecoding(gym.Env):
         conversation_index = np.random.randint(self.n_conversations)
         indexer = self.conversations_df.loc()
         self.prompt = indexer[conversation_index].text
-        self.tokens = indexer[conversation_index].tokens
+        self.tokens = torch.as_tensor(self.tokenizer.encode(self.prompt)).to(ptu.device)
 
         last_hidden = self._get_draft_last_hidden()
         obs = np.concatenate((
