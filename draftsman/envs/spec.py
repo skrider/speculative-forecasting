@@ -82,7 +82,7 @@ class SpeculativeDecoding(gym.Env):
     def reset(self):
         conversation_index = np.random.randint(self.n_conversations)
         indexer = self.conversations_df.loc()
-        self.prompt = indexer[conversation_index].conversation_a[0]["content"]
+        self.prompt = indexer[conversation_index].text
         self.tokens = torch.as_tensor(self.tokenizer.encode(self.prompt)).to(ptu.device)
 
         last_hidden = self._get_draft_last_hidden()

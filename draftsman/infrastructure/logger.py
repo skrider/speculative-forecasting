@@ -15,6 +15,12 @@ class Logger:
     def log_scalar(self, scalar, name, step_):
         self._summ_writer.add_scalar("{}".format(name), scalar, step_)
 
+    def log_histogram(self, array, name, step_):
+        self._summ_writer.add_histogram("{}".format(name), array, step_)
+
+    def log_string(self, string, name, step_):
+        self._summ_writer.add_text("{}".format(name), string, step_)
+
     def log_scalars(self, scalar_dict, group_name, step, phase):
         """Will log all scalars in the same plot."""
         self._summ_writer.add_scalars(
