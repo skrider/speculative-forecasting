@@ -100,6 +100,10 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
                 logger.log_scalar(np.max(ep_lens), "eval/ep_len_max", step)
                 logger.log_scalar(np.min(ep_lens), "eval/ep_len_min", step)
 
+            # log histogram of actions
+            actions = np.concatenate([t["actions"] for t in trajectories], 0)
+            logger.log_histogram(actions, "eval/actions", step)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_file", "-cfg", type=str, required=True)
@@ -123,7 +127,7 @@ def main():
     ray.init(runtime_env=runtime_env)
 
     # create directory for logging
-    logdir_prefix = "hw5_offline_"  # keep for autograder
+    logdir_prefix = "draftsman_offline_"  # keep for autograder
 
     config = make_config(args.config_file)
     logger = make_logger(logdir_prefix, config)

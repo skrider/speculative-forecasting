@@ -1,0 +1,8 @@
+base_config: "dqn"
+env_name: "SpeculativeDecoding-v0"
+exp_name: "spec_dqn_offline"
+training_steps: 200000
+dataset_name: "speculative_decoding_1702031626"
+
+hidden_size: 64
+num_layers: 2

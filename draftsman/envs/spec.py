@@ -8,6 +8,7 @@ import ray
 import pandas as pd
 from transformers import LlamaForCausalLM, LlamaTokenizerFast
 from draftsman.infrastructure import pytorch_util as ptu
+from draftsman.infrastructure.utils import IS_HONEYDEW
 
 class GPUActor:
     def __init__(self, model_path: str):
@@ -39,7 +40,7 @@ class GPUActor:
         done = main_run[n].outputs[0].finish_reason != "length"
 
         return draft[:n] + [sampled_token], done
-        
+
 
 class SpeculativeDecoding(gym.Env):
     """
@@ -54,16 +55,16 @@ class SpeculativeDecoding(gym.Env):
         conversations_path: str,
         n_conversations: int,
         max_tokens_guess: int,
+        conversation_offset: int = 0,
         accepted_tokens_weight: float = 1.0,
         rejected_tokens_weight: float = 1.0,
-        tensor_parallel_size: int = 1,
         max_tokens: int = 100,
     ):
-        self.main_llm = ray.remote(num_gpus=(1 if tensor_parallel_size == 1 else 0))(LLM).remote(
+        self.main_llm = ray.remote(num_gpus=(0 if IS_HONEYDEW else 1))(LLM).remote(
             model=main_model_path,
             tokenizer=tokenizer,
             max_num_seqs=max_tokens_guess,
-            tensor_parallel_size=tensor_parallel_size,
+            tensor_parallel_size=(2 if IS_HONEYDEW else 1),
             trust_remote_code=True,
             dtype="half",
             gpu_memory_utilization=0.9,
@@ -95,6 +96,7 @@ class SpeculativeDecoding(gym.Env):
         
         # conversations from ShareGPT
         self.conversations_df = pd.read_parquet(conversations_path, engine="pyarrow")
+        self.conversation_offset = conversation_offset
 
     def seed(self, seed):
         np.random.seed(seed)
@@ -111,7 +113,7 @@ class SpeculativeDecoding(gym.Env):
         return draft_out.hidden_states[-1][0, -1, :].detach().cpu().numpy()
 
     def reset(self):
-        conversation_index = np.random.randint(self.n_conversations)
+        conversation_index = np.random.randint(self.n_conversations) + self.conversation_offset
         indexer = self.conversations_df.loc()
         self.prompt = indexer[conversation_index].text
         self.tokens = torch.as_tensor(self.tokenizer.encode(self.prompt)).to(ptu.device)

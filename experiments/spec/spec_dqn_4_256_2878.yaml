@@ -1,0 +1,8 @@
+base_config: "dqn"
+env_name: "SpeculativeDecodingManyTest-v0"
+exp_name: "spec_dqn_offline_4_256_2878"
+training_steps: 150000
+dataset_name: "speculative_decoding_many_1702172878"
+
+hidden_size: 256
+num_layers: 4

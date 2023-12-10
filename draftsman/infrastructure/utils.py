@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import numpy as np
 import copy
+import os
 from draftsman.networks.mlp_policy import MLPPolicy
 import gym
 import cv2
@@ -10,6 +11,8 @@ from typing import Dict, Tuple, List
 ############################################
 ############################################
 
+# are we running on an 8x2080Ti node?
+IS_HONEYDEW = os.environ.get("HONEYDEW") is not None
 
 def sample_trajectory(
     env: gym.Env, policy: MLPPolicy, max_length: int, render: bool = False
