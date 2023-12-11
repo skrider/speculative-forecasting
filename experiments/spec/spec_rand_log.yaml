@@ -1,0 +1,5 @@
+base_config: "random"
+env_name: "SpeculativeDecodingManyLog-v0"
+exp_name: "spec_rand_many_log"
+total_steps: 200000
+dataset_name: "speculative_decoding_many_log"

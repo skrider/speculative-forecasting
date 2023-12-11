@@ -1,8 +1,10 @@
 base_config: "dqn"
-env_name: "SpeculativeDecoding-v0"
+env_name: "SpeculativeDecodingMany-v0"
 exp_name: "spec_dqn_offline_2_512_1521"
-training_steps: 200000
+training_steps: 150000
 dataset_name: "speculative_decoding_many_1702181521"
 
 hidden_size: 512
 num_layers: 2
+discount: 0.5
+

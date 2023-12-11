@@ -6,3 +6,4 @@ dataset_name: "speculative_decoding_many_1702173273"
 
 hidden_size: 256
 num_layers: 4
+discount: 0.2

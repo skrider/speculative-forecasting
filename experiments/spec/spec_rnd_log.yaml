@@ -1,0 +1,8 @@
+base_config: "rnd"
+env_name: "SpeculativeDecodingManyLog-v0"
+exp_name: "spec_rnd_many_log"
+total_steps: 200000
+dataset_name: "speculative_decoding_many_log_rnd"
+
+rnd_weight: 1.0
+rnd_network_learning_rate: 0.01

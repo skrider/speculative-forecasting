@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import gym
 import pickle
 from vllm import LLM, SamplingParams
@@ -59,6 +60,7 @@ class SpeculativeDecoding(gym.Env):
         accepted_tokens_weight: float = 1.0,
         rejected_tokens_weight: float = 1.0,
         max_tokens: int = 100,
+        logarithmic: bool = False,
     ):
         self.main_llm = ray.remote(num_gpus=(0 if IS_HONEYDEW else 1))(LLM).remote(
             model=main_model_path,
@@ -69,6 +71,7 @@ class SpeculativeDecoding(gym.Env):
             dtype="half",
             gpu_memory_utilization=0.9,
         )
+        self.logarithmic = logarithmic
         self.main_sp = SamplingParams(n=1, temperature=0., max_tokens=1)
         self.num_actions = max_tokens_guess
         self.max_tokens = max_tokens
@@ -87,7 +90,10 @@ class SpeculativeDecoding(gym.Env):
         self.accepted_tokens_weight = accepted_tokens_weight
         self.rejected_tokens_weight = rejected_tokens_weight
 
-        self.action_space = gym.spaces.Discrete(self.num_actions)
+        if logarithmic:
+            self.action_space = gym.spaces.Discrete(int(math.log2(self.num_actions)) + 1)
+        else:
+            self.action_space = gym.spaces.Discrete(self.num_actions)
         self.observation_space = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(self.draft_hidden_dim + 2,), dtype=np.float32
         )
@@ -130,7 +136,10 @@ class SpeculativeDecoding(gym.Env):
 
     def step(self, action):
         # generate draft
-        num_tokens = action
+        if self.logarithmic:
+            num_tokens = 2 ** action
+        else:
+            num_tokens = action
         if num_tokens > 0:
             draft_out = self.draft_llm.generate(
                 input_ids=self.tokens.unsqueeze(0),

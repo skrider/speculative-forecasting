@@ -101,7 +101,7 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
                 logger.log_scalar(np.min(ep_lens), "eval/ep_len_min", step)
 
             # log histogram of actions
-            actions = np.concatenate([t["actions"] for t in trajectories], 0)
+            actions = np.concatenate([t["action"] for t in trajectories], 0)
             logger.log_histogram(actions, "eval/actions", step)
 
 def main():
