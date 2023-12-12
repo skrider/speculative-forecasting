@@ -14,6 +14,29 @@ def pad(list, n):
 def prepare_for_arrow(tensor):
     return tensor.cpu().tolist()
 
+def collect_text_instruct_coder(dataset_item):
+    return f"{dataset_item['instruction']} {dataset_item['input']} {dataset_item['output']}"
+
+def collect_text_sharegpt(dataset_item):
+    acc = ''
+    state = 0
+    for c in dataset_item['conversations']:
+        if state == 0 and c['from'] == 'human':
+            acc = acc + ' ' + c['value']
+            state = 1
+        if state == 1 and c['from'] == 'gpt':
+            acc = acc + ' ' + c['value']
+            state = 2
+        if state == 2 and c['from'] == 'human':
+            acc = acc + ' ' + c['value']
+            break
+    return acc
+
+collect_text = {
+    "sharegpt": collect_text_sharegpt,
+    "instruct_coder": collect_text_instruct_coder,
+}
+
 @torch.no_grad()
 def main(args):
     dataset_in = args.dataset_in
@@ -51,7 +74,7 @@ def main(args):
         print(f"saving dataset to {dataset_out}")
         df = pd.DataFrame(
             dataset_processed, 
-            columns=["input_ids", "main_hidden_states", "draft_hidden_states", "accept_mask"])
+            columns=["input_ids", "main_hidden_states", "draft_hidden_states", "accept_mask", "dataset_index"])
         # save as parquet
         # append to the existing dataset
         if os.path.exists(dataset_out):
@@ -65,21 +88,10 @@ def main(args):
     while total_processed < args.n:
         batch = []
         while len(batch) < args.batch_size:
-            acc = ""
-            state = 0
             d = dataset[dataset_index]
             dataset_index += 1
-            for c in d['conversations']:
-                if state == 0 and c['from'] == 'human':
-                    acc = acc + ' ' + c['value']
-                    state = 1
-                if state == 1 and c['from'] == 'gpt':
-                    acc = acc + ' ' + c['value']
-                    state = 2
-                if state == 2 and c['from'] == 'human':
-                    acc = acc + ' ' + c['value']
-                    break
-            input_ids = tokenizer.encode(acc, return_tensors="pt").squeeze(0)
+            prompt = collect_text[args.dataset_type](d)
+            input_ids = tokenizer.encode(prompt, return_tensors="pt").squeeze(0)
             if input_ids.shape[0] > args.prompt_tokens:
                 input_ids = input_ids[:args.prompt_tokens]
             else:
@@ -133,6 +145,7 @@ def main(args):
                     "main_hidden_states": prepare_for_arrow(main_hidden_states[i]),
                     "draft_hidden_states": prepare_for_arrow(draft_hidden_states[i]),
                     "accept_mask": prepare_for_arrow(mask[i]),
+                    "dataset_index": batch[i]['index'],
                 }
                 dataset_processed.append(item)
                 total_processed += 1
@@ -161,6 +174,12 @@ if __name__ == "__main__":
     parser.add_argument("--n", type=int, default=10000)
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--writeback_interval", type=int, default=1000)
+    parser.add_argument("--dataset_type", type=str, default="sharegpt")
     args = parser.parse_args()
+    
+    runtime_env = {
+        "env_vars": {"HUGGING_FACE_HUB_TOKEN": os.getenv("HUGGING_FACE_HUB_TOKEN")}
+    }
+    ray.init(runtime_env=runtime_env)
 
     main(args)
