@@ -46,12 +46,13 @@ def basic_dqn_config(
     def make_env():
         return RecordEpisodeStatistics(gym.make(env_name), 100)
 
-    log_string = "{}_{}_s{}_l{}_d{}".format(
+    log_string = "{}_{}_s{}_l{}_d{}_b{}".format(
         exp_name or "dqn",
         env_name,
         hidden_size,
         num_layers,
         discount,
+        batch_size,
     )
 
     if use_double_q:

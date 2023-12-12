@@ -1,10 +1,10 @@
 base_config: "dqn"
-env_name: "SpeculativeDecodingManyTestLog-v0"
-exp_name: "spec_dqn_offline"
+env_name: "SpeculativeDecodingManyLog-v0"
+exp_name: "spec_log_dqn_offline"
 training_steps: 500000
 dataset_name: "speculative_decoding_many_log_rnd_1702246159"
 
-hidden_size: 256
+hidden_size: 64
 num_layers: 4
 discount: 0.5
 learning_rate: 0.0005
