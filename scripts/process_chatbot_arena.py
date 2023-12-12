@@ -43,7 +43,26 @@ def main(args):
     print("Processing dataset...")
     dataset_processed = []
     dataset_index = 0
-    while len(dataset_processed) < args.n:
+
+    def save():
+        nonlocal dataset_processed
+        nonlocal dataset_out
+        # save as dataframe
+        print(f"saving dataset to {dataset_out}")
+        df = pd.DataFrame(
+            dataset_processed, 
+            columns=["input_ids", "main_hidden_states", "draft_hidden_states", "accept_mask"])
+        # save as parquet
+        # append to the existing dataset
+        if os.path.exists(dataset_out):
+            df.to_parquet(dataset_out, append=True)
+        else:
+            df.to_parquet(dataset_out)
+        dataset_processed = []
+
+    total_processed = 0
+
+    while total_processed < args.n:
         batch = []
         while len(batch) < args.batch_size:
             acc = ""
@@ -116,8 +135,12 @@ def main(args):
                     "accept_mask": prepare_for_arrow(mask[i]),
                 }
                 dataset_processed.append(item)
+                total_processed += 1
                 valid += 1
         print(f"added {valid} items")
+
+        if total_processed % args.writeback_interval == 0 and total_processed > 0:
+            save()
 
     total_generated = len(dataset_processed) * args.generation_tokens
 
@@ -125,10 +148,7 @@ def main(args):
     print("Total accepted tokens:", total_generated - missed_tokens)
     print("Acceptance rate:", (total_generated - missed_tokens) / total_generated)
 
-    # save as dataframe
-    df = pd.DataFrame(dataset_processed, columns=["input_ids", "main_hidden_states", "draft_hidden_states", "accept_mask"])
-    # save as parquet
-    df.to_parquet(dataset_out)
+    save()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -140,6 +160,7 @@ if __name__ == "__main__":
     parser.add_argument("--draft_model", type=str, default="JackFram/llama-160m")
     parser.add_argument("--n", type=int, default=10000)
     parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--writeback_interval", type=int, default=1000)
     args = parser.parse_args()
 
     main(args)

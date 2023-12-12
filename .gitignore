@@ -3,3 +3,4 @@ draftsman.egg-info
 datasets/chatbot-arena.parquet
 data
 datasets
+.vscode
