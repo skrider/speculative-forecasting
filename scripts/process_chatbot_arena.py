@@ -1,5 +1,6 @@
 import json
 import torch
+import gc
 import argparse
 import os
 import sys
@@ -49,23 +50,25 @@ def main(args):
     print("Loading models...")
     tokenizer = LlamaTokenizerFast.from_pretrained(args.main_model)
     
-    main_model_generate = ray.remote(num_gpus=1)(LLM).remote(args.main_model)
+    main_model_generate = ray.remote(num_gpus=(1 if args.vllm_tp == 1 else 0))(LLM).remote(
+        model=args.main_model,
+        tensor_parallel_size=args.vllm_tp)
     main_model_generate_sp = SamplingParams(
         temperature=0.0,
         max_tokens=args.generation_tokens,
     )
 
-    main_model = LlamaForCausalLM.from_pretrained(args.main_model, use_cache=False, torch_dtype=torch.float16)
+    main_model = LlamaForCausalLM.from_pretrained(args.main_model, use_cache=False, torch_dtype=torch.float16, device_map="auto")
     draft_model = LlamaForCausalLM.from_pretrained(args.draft_model, use_cache=False, torch_dtype=torch.float16)
     main_model.half()
-    main_model.cuda()
+    # main_model.cuda()
     draft_model.cuda()
 
     missed_tokens = 0
 
     print("Processing dataset...")
     dataset_processed = []
-    dataset_index = 0
+    dataset_index = args.offset
 
     def save():
         nonlocal dataset_processed
@@ -78,9 +81,9 @@ def main(args):
         # save as parquet
         # append to the existing dataset
         if os.path.exists(dataset_out):
-            df.to_parquet(dataset_out, append=True)
+            df.to_parquet(dataset_out, engine='fastparquet', append=True)
         else:
-            df.to_parquet(dataset_out)
+            df.to_parquet(dataset_out, engine='fastparquet')
         dataset_processed = []
 
     total_processed = 0
@@ -118,6 +121,7 @@ def main(args):
         out_main_encode = main_model.forward(
             all_ids,
             output_hidden_states=True,
+            use_cache=False,
         )
         # get hidden states
         main_hidden_states = out_main_encode.hidden_states[-1]
@@ -126,12 +130,13 @@ def main(args):
         out_draft_encode = draft_model.forward(
             all_ids,
             output_hidden_states=True,
+            use_cache=False,
         )
         draft_hidden_states = out_draft_encode.hidden_states[-1]
         draft_hidden_states = draft_hidden_states[:, args.prompt_tokens-1:-1, :]
 
         draft_logits = draft_model.get_output_embeddings().forward(draft_hidden_states)
-        draft_prediction = torch.argmax(draft_logits, dim=-1)
+        draft_prediction = torch.argmax(draft_logits, dim=-1).to(batch_output_ids_t.device)
         # get mask of tokens where the draft model was incorrect
         mask = torch.where(draft_prediction != batch_output_ids_t, 1, 0)
 
@@ -150,12 +155,17 @@ def main(args):
                 dataset_processed.append(item)
                 total_processed += 1
                 valid += 1
+                
+                if total_processed % args.writeback_interval == 0 and total_processed > 0:
+                    save()
+        
+        gc.collect()
+
         print(f"added {valid} items")
 
-        if total_processed % args.writeback_interval == 0 and total_processed > 0:
-            save()
-
     total_generated = len(dataset_processed) * args.generation_tokens
+
+    
 
     print("Total generated tokens:", total_generated)
     print("Total accepted tokens:", total_generated - missed_tokens)
@@ -174,7 +184,9 @@ if __name__ == "__main__":
     parser.add_argument("--n", type=int, default=10000)
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--writeback_interval", type=int, default=1000)
+    parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--dataset_type", type=str, default="sharegpt")
+    parser.add_argument("--vllm_tp", type=int, default=4)
     args = parser.parse_args()
     
     runtime_env = {
