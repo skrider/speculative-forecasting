@@ -187,6 +187,7 @@ if __name__ == "__main__":
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--dataset_type", type=str, default="sharegpt")
     parser.add_argument("--vllm_tp", type=int, default=4)
+    parser.add_argument("--generation_workers", type=int, default=1)
     args = parser.parse_args()
     
     runtime_env = {
