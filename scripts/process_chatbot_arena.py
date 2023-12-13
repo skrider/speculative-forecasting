@@ -1,74 +1,50 @@
 import json
 import torch
-import gc
 import argparse
 import os
 import sys
 import pandas as pd
 from transformers import LlamaTokenizerFast, LlamaForCausalLM
 from vllm import LLM, SamplingParams
-import ray
+import numpy as np
 
 def pad(list, n):
     return list + [0.] * (n - len(list))
 
-def prepare_for_arrow(tensor):
-    return tensor.cpu().tolist()
+def prepare_for_arrow(tensor, type):
+    return tensor.cpu().numpy().astype(type).tobytes()
 
-def collect_text_instruct_coder(dataset_item):
-    return f"{dataset_item['instruction']} {dataset_item['input']} {dataset_item['output']}"
-
-def collect_text_sharegpt(dataset_item):
-    acc = ''
-    state = 0
-    for c in dataset_item['conversations']:
-        if state == 0 and c['from'] == 'human':
-            acc = acc + ' ' + c['value']
-            state = 1
-        if state == 1 and c['from'] == 'gpt':
-            acc = acc + ' ' + c['value']
-            state = 2
-        if state == 2 and c['from'] == 'human':
-            acc = acc + ' ' + c['value']
-            break
-    return acc
-
-collect_text = {
-    "sharegpt": collect_text_sharegpt,
-    "instruct_coder": collect_text_instruct_coder,
-}
-
-@torch.no_grad()
 def main(args):
     dataset_in = args.dataset_in
     dataset_out = args.dataset_out
 
     print("Loading dataset...")
-    with open(dataset_in, "r") as f:
-        dataset = json.load(f)
+    dataset = pd.read_parquet(dataset_in)
+
+    mask = dataset['model'] == args.target_model
+    filtered_dataset = dataset[mask]
+    filtered_dataset_iter = filtered_dataset.iterrows()
+
+    print(f"found {len(filtered_dataset)} conversations for {args.target_model}")
 
     print("Loading models...")
-    tokenizer = LlamaTokenizerFast.from_pretrained(args.main_model)
+    # pad on the left side to make it easier to slice out final hidden states
+    tokenizer = LlamaTokenizerFast.from_pretrained(
+        args.main_model, 
+        max_length=args.prompt_tokens + args.generation_tokens,
+        padding_side='left',
+        truncation_side='left')
+    tokenizer.pad_token = tokenizer.eos_token
     
-    main_model_generate = ray.remote(num_gpus=(1 if args.vllm_tp == 1 else 0))(LLM).remote(
-        model=args.main_model,
-        tensor_parallel_size=args.vllm_tp)
-    main_model_generate_sp = SamplingParams(
-        temperature=0.0,
-        max_tokens=args.generation_tokens,
-    )
-
     main_model = LlamaForCausalLM.from_pretrained(args.main_model, use_cache=False, torch_dtype=torch.float16, device_map="auto")
     draft_model = LlamaForCausalLM.from_pretrained(args.draft_model, use_cache=False, torch_dtype=torch.float16)
     main_model.half()
-    # main_model.cuda()
     draft_model.cuda()
 
     missed_tokens = 0
 
     print("Processing dataset...")
     dataset_processed = []
-    dataset_index = args.offset
 
     def save():
         nonlocal dataset_processed
@@ -87,85 +63,93 @@ def main(args):
         dataset_processed = []
 
     total_processed = 0
+    end_reached = False
 
-    while total_processed < args.n:
+    while total_processed < args.n and not end_reached:
         batch = []
         while len(batch) < args.batch_size:
-            d = dataset[dataset_index]
-            dataset_index += 1
-            prompt = collect_text[args.dataset_type](d)
-            input_ids = tokenizer.encode(prompt, return_tensors="pt").squeeze(0)
-            if input_ids.shape[0] > args.prompt_tokens:
-                input_ids = input_ids[:args.prompt_tokens]
-            else:
-                # ensure that the context is not too short
-                continue
-            bi = {
-                "input_ids": input_ids,
-                "index": dataset_index - 1,
-            }
-            batch.append(bi)
-        batch_input_ids_l = [b['input_ids'].tolist() for b in batch]
-        batch_input_ids_t = torch.tensor(batch_input_ids_l, dtype=torch.int64).cuda()
-        # generate completions
-        out_generate_r = main_model_generate.generate.remote(
-            prompt_token_ids=batch_input_ids_l, 
-            sampling_params=main_model_generate_sp, 
-            use_tqdm=False
-        )
-        out_generate = ray.get(out_generate_r)
-        batch_output_ids_l = [pad(out.outputs[0].token_ids, args.prompt_tokens) for out in out_generate]
-        batch_output_ids_t = torch.tensor(batch_output_ids_l, dtype=torch.int64).cuda()
-        all_ids = torch.cat([batch_input_ids_t, batch_output_ids_t], dim=1)
+            try:
+                index, item = next(filtered_dataset_iter)
+
+                conversation = item['conversation']
+
+                state = 0
+                prompt = ""
+                generation = ""
+                
+                for c in conversation:
+                    if state == 0 and c['role'] == 'user':
+                        prompt = c['content']
+                        state = 1
+                    if state == 1 and c['role'] == 'assistant':
+                        generation = c['content']
+                        break
+
+                generation_ids = tokenizer.encode(generation)
+                if len(generation_ids) < args.generation_tokens:
+                    continue
+
+                bi = {
+                    "text": prompt + " " + generation,
+                    "index": index,
+                }
+                batch.append(bi)
+            except StopIteration:
+                end_reached = True
+                break
+
+        # prepare batch for forward pass
+        prompts = [b['text'] for b in batch]
+        inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)
+        input_ids = inputs.input_ids
+        attn_mask = inputs.attention_mask
+        input_ids = input_ids[:, -(args.prompt_tokens+args.generation_tokens):]
+        attn_mask = attn_mask[:, -(args.prompt_tokens+args.generation_tokens):]
+
         # run a normal forward pass to get hidden states
-        out_main_encode = main_model.forward(
-            all_ids,
-            output_hidden_states=True,
-            use_cache=False,
-        )
+        main_hidden_states = main_model.get_decoder().forward(
+            input_ids.cuda(),
+            attention_mask=attn_mask.cuda(),
+        )[0]
         # get hidden states
-        main_hidden_states = out_main_encode.hidden_states[-1]
-        main_hidden_states = main_hidden_states[:, args.prompt_tokens-1:-1, :]
+        main_hidden_states = main_hidden_states[:, -(args.generation_tokens+1):-1, :]
         
-        out_draft_encode = draft_model.forward(
-            all_ids,
+        draft_hidden_states = draft_model.get_decoder().forward(
+            input_ids.cuda(),
+            attention_mask=attn_mask.cuda(),
             output_hidden_states=True,
-            use_cache=False,
-        )
-        draft_hidden_states = out_draft_encode.hidden_states[-1]
-        draft_hidden_states = draft_hidden_states[:, args.prompt_tokens-1:-1, :]
+        )[0]
+        draft_hidden_states = draft_hidden_states[:, -(args.generation_tokens+1):-1, :]
 
         draft_logits = draft_model.get_output_embeddings().forward(draft_hidden_states)
-        draft_prediction = torch.argmax(draft_logits, dim=-1).to(batch_output_ids_t.device)
+        draft_prediction = torch.argmax(draft_logits, dim=-1).cpu()
+        generation_ids = input_ids[:,-args.generation_tokens:]
         # get mask of tokens where the draft model was incorrect
-        mask = torch.where(draft_prediction != batch_output_ids_t, 1, 0)
+        mask = torch.where(draft_prediction != generation_ids, 1, 0)
 
         valid = 0
-        for i in range(args.batch_size):
+        for i, _ in enumerate(batch):
             # drop it if not the max length
-            if out_generate[i].outputs[0].finish_reason == "length":
-                missed_tokens += mask[i].sum().item()
-                item = {
-                    "input_ids": prepare_for_arrow(batch_input_ids_t[i]),
-                    "main_hidden_states": prepare_for_arrow(main_hidden_states[i]),
-                    "draft_hidden_states": prepare_for_arrow(draft_hidden_states[i]),
-                    "accept_mask": prepare_for_arrow(mask[i]),
-                    "dataset_index": batch[i]['index'],
-                }
-                dataset_processed.append(item)
-                total_processed += 1
-                valid += 1
-                
-                if total_processed % args.writeback_interval == 0 and total_processed > 0:
-                    save()
-        
-        gc.collect()
+            missed_tokens += mask[i].sum().item()
+            seq_input_ids = input_ids[i]
+            seq_input_ids = seq_input_ids[seq_input_ids != 2]
+            item = {
+                "input_ids": prepare_for_arrow(seq_input_ids, np.int64),
+                "main_hidden_states": prepare_for_arrow(main_hidden_states[i], np.float32),
+                "draft_hidden_states": prepare_for_arrow(draft_hidden_states[i], np.float32),
+                "accept_mask": prepare_for_arrow(mask[i], np.float32),
+                "dataset_index": batch[i]['index'],
+            }
+            dataset_processed.append(item)
+            total_processed += 1
+            valid += 1
 
         print(f"added {valid} items")
 
-    total_generated = len(dataset_processed) * args.generation_tokens
+        save()
+        torch.cuda.empty_cache()
 
-    
+    total_generated = total_processed * args.generation_tokens
 
     print("Total generated tokens:", total_generated)
     print("Total accepted tokens:", total_generated - missed_tokens)
@@ -181,18 +165,11 @@ if __name__ == "__main__":
     parser.add_argument("--generation_tokens", type=int, default=256)
     parser.add_argument("--main_model", type=str, default="JackFram/llama-160m")
     parser.add_argument("--draft_model", type=str, default="JackFram/llama-160m")
+    parser.add_argument("--target_model", type=str, default="llama-13b")
     parser.add_argument("--n", type=int, default=10000)
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--writeback_interval", type=int, default=1000)
-    parser.add_argument("--offset", type=int, default=0)
-    parser.add_argument("--dataset_type", type=str, default="sharegpt")
-    parser.add_argument("--vllm_tp", type=int, default=4)
-    parser.add_argument("--generation_workers", type=int, default=1)
     args = parser.parse_args()
-    
-    runtime_env = {
-        "env_vars": {"HUGGING_FACE_HUB_TOKEN": os.getenv("HUGGING_FACE_HUB_TOKEN")}
-    }
-    ray.init(runtime_env=runtime_env)
 
-    main(args)
+    with torch.no_grad():
+        main(args)
