@@ -133,6 +133,7 @@ def main(args):
             missed_tokens += mask[i].sum().item()
             seq_input_ids = input_ids[i]
             seq_input_ids = seq_input_ids[seq_input_ids != 2]
+            __import__('pdb').set_trace()
             item = {
                 "input_ids": prepare_for_arrow(seq_input_ids, np.int64),
                 "main_hidden_states": prepare_for_arrow(main_hidden_states[i], np.float32),
