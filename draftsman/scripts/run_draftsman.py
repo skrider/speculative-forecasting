@@ -130,15 +130,21 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
                 logger.log_scalar(np.max(ep_lens), "eval/ep_len_max", step)
                 logger.log_scalar(np.min(ep_lens), "eval/ep_len_min", step)
 
-            dataset_file = os.path.join(args.dataset_dir, f"{dataset_name}.pkl")
-            with open(dataset_file, "wb") as f:
-                pickle.dump(replay_buffer, f)
-                print("Saved dataset to", dataset_file)
-                
-    dataset_file = os.path.join(args.dataset_dir, f"{dataset_name}.pkl")
-    with open(dataset_file, "wb") as f:
-        pickle.dump(replay_buffer, f)
-        print("Saved dataset to", dataset_file)
+            actions = np.concatenate([t["action"] for t in trajectories], 0)
+            logger.log_histogram(actions, "eval/actions", step)
+
+
+            if not args.no_save:
+                dataset_file = os.path.join(args.dataset_dir, f"{dataset_name}.pkl")
+                with open(dataset_file, "wb") as f:
+                    pickle.dump(replay_buffer, f)
+                    print("Saved dataset to", dataset_file)
+
+    if not args.no_save:   
+        dataset_file = os.path.join(args.dataset_dir, f"{dataset_name}.pkl")
+        with open(dataset_file, "wb") as f:
+            pickle.dump(replay_buffer, f)
+            print("Saved dataset to", dataset_file)
 
 
 banner = """
@@ -162,13 +168,9 @@ def main():
     parser.add_argument("--which_gpu", "-gpu_id", default=0)
     parser.add_argument("--log_interval", type=int, default=1)
     parser.add_argument("--dataset_dir", type=str, required=True)
+    parser.add_argument("--no_save", type=bool)
 
     args = parser.parse_args()
-
-    runtime_env = {
-        "env_vars": {"HUGGING_FACE_HUB_TOKEN": os.getenv("HUGGING_FACE_HUB_TOKEN")}
-    }
-    ray.init(runtime_env=runtime_env)
 
     # create directory for logging
     logdir_prefix = "draftsman_"  # keep for autograder
