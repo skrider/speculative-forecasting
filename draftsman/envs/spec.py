@@ -1,47 +1,47 @@
 import numpy as np
 import math
 import gym
-import pickle
-from vllm import LLM, SamplingParams
 import torch
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 import ray
 import pandas as pd
-from transformers import LlamaForCausalLM, LlamaTokenizerFast
 from draftsman.infrastructure import pytorch_util as ptu
-from draftsman.infrastructure.utils import IS_HONEYDEW
+from dataclasses import dataclass
 
-class GPUActor:
-    def __init__(self, model_path: str):
-        self.model = LlamaForCausalLM.from_pretrained(model_path, use_cache=False)
-        self.model.eval()
-        self.model.cuda()
-        self.model.half()
-    def spec_step_deterministic(self, draft):
-        main_prompts = [prefix]
-        for i in range(len(draft)):
-            main_prompts += [prefix + draft[: i + 1]]
-        
-        main_run = self.main_llm.generate.remote(
-            prompt_token_ids=main_prompts, 
-            sampling_params=self.main_sp, 
-            use_tqdm=False
-        )
-        main_run = ray.get(main_run)
+@dataclass
+class SpeculativeDecodingRun:
+    """
+    Dataclass for speculative decoding run
+    """
+    input_ids: np.ndarray
+    main_hidden_states: np.ndarray
+    draft_hidden_states: np.ndarray
+    accept_mask: np.ndarray
+    dataset_index: int
 
-        n = 0
-        sampled_token = main_run[0].outputs[0].token_ids[0]
-        for i, x in enumerate(draft):
-            sampled_token = main_run[i].outputs[0].token_ids[0]
-            if x == sampled_token:
-                n += 1
-            else:
-                break
+class LogicalSpeculativeDecodingDataset():
+    def __init__(self, datasets, offset, size):
+        self.dfs = []
+        self.sizes = []
+        self.size = 0
+        for d in datasets:
+            df = pd.read_parquet(d, engine="fastparquet")
+            self.sizes += [len(df)]
+            self.size += len(df)
+            self.dfs.append(df)
+        assert offset + size <= self.size
 
-        done = main_run[n].outputs[0].finish_reason != "length"
+        self.offset = offset
+        self.logical_size = size
 
-        return draft[:n] + [sampled_token], done
-
+    def get(self, index):
+        index = index % self.logical_size
+        physical_index = self.offset + index
+        for i, size in enumerate(self.sizes):
+            if physical_index < size:
+                return self.dfs[i].loc()[physical_index]
+            physical_index -= size
+        raise IndexError()
 
 class SpeculativeDecoding(gym.Env):
     """
@@ -50,43 +50,27 @@ class SpeculativeDecoding(gym.Env):
 
     def __init__(
         self,
-        draft_model_path: str,
-        main_model_path: str,
-        tokenizer: str,
-        conversations_path: str,
+        conversations_paths: str,
         n_conversations: int,
         max_tokens_guess: int,
+        max_tokens: int,
         conversation_offset: int = 0,
         accepted_tokens_weight: float = 1.0,
         rejected_tokens_weight: float = 1.0,
-        max_tokens: int = 100,
         logarithmic: bool = False,
+        use_main_hidden_states: bool = False,
+        use_draft_hidden_states: bool = False,
+        one_hot_encode_prev: bool = False,
     ):
-        self.main_llm = ray.remote(num_gpus=(0 if IS_HONEYDEW else 1))(LLM).remote(
-            model=main_model_path,
-            tokenizer=tokenizer,
-            max_num_seqs=max_tokens_guess,
-            tensor_parallel_size=(2 if IS_HONEYDEW else 1),
-            trust_remote_code=True,
-            dtype="half",
-            gpu_memory_utilization=0.9,
-        )
         self.logarithmic = logarithmic
-        self.main_sp = SamplingParams(n=1, temperature=0., max_tokens=1)
         self.num_actions = max_tokens_guess
-        self.max_tokens = max_tokens
-        self.max_episode_steps = max_tokens
 
         # TODO add cache
         # TODO enable flash attention
-        self.draft_llm = LlamaForCausalLM.from_pretrained(draft_model_path, use_cache=True)
-        self.draft_llm.eval()
-        self.draft_llm.to(ptu.device)
-        self.draft_hidden_dim = self.draft_llm.config.hidden_size
-        self.tokenizer = LlamaTokenizerFast.from_pretrained(tokenizer)
         self.n_conversations = n_conversations
 
         self.max_tokens_guess = max_tokens_guess
+        self.max_tokens = max_tokens
         self.accepted_tokens_weight = accepted_tokens_weight
         self.rejected_tokens_weight = rejected_tokens_weight
 
@@ -94,45 +78,88 @@ class SpeculativeDecoding(gym.Env):
             self.action_space = gym.spaces.Discrete(int(math.log2(self.num_actions)) + 1)
         else:
             self.action_space = gym.spaces.Discrete(self.num_actions)
+
+        # conversations from ShareGPT
+        self.conversations = LogicalSpeculativeDecodingDataset(
+            conversations_paths, 
+            conversation_offset, 
+            n_conversations
+        )
+        self.conversation_offset = conversation_offset
+
+        c0_raw = self.conversations.get(0)
+        c0 = self._parse_item(c0_raw)
+
+        self.use_main_hidden_states = use_main_hidden_states
+        self.use_draft_hidden_states = use_draft_hidden_states
+        self.one_hot_encode_prev = one_hot_encode_prev
+
+        self.obs_size = 0
+        if use_main_hidden_states:
+            self.main_hidden_dim = len(c0.main_hidden_states[0])
+            self.obs_size += self.main_hidden_dim
+        if use_draft_hidden_states:
+            self.draft_hidden_dim = len(c0.draft_hidden_states[0])
+            self.obs_size += self.draft_hidden_dim
+        if one_hot_encode_prev:
+            self.obs_size += self.max_tokens_guess * 2
+        else:
+            self.obs_size += 2
+
         self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.draft_hidden_dim + 2,), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(self.obs_size,), dtype=np.float32
         )
         self.action_dim = self.ac_dim = 1
         self.observation_dim = self.obs_dim = 1
-        
-        # conversations from ShareGPT
-        self.conversations_df = pd.read_parquet(conversations_path, engine="pyarrow")
-        self.conversation_offset = conversation_offset
+        self.max_episode_steps = self.max_tokens
 
-    def seed(self, seed):
-        np.random.seed(seed)
-        torch.manual_seed(seed)
+    def _parse_item(self, item):
+        input_ids = np.frombuffer(item.input_ids, dtype=np.int64)
+        main_hidden_states = np.frombuffer(item.main_hidden_states, dtype=np.float32).reshape(self.max_tokens, -1)
+        draft_hidden_states = np.frombuffer(item.draft_hidden_states, dtype=np.float32).reshape(self.max_tokens, -1)
+        accept_mask = np.frombuffer(item.accept_mask, dtype=np.float32)
+        # cast to int
+        accept_mask = accept_mask.astype(np.int32)
+        dataset_index = item.dataset_index
+        return SpeculativeDecodingRun(
+            input_ids=input_ids,
+            main_hidden_states=main_hidden_states,
+            draft_hidden_states=draft_hidden_states,
+            accept_mask=accept_mask,
+            dataset_index=dataset_index,
+        )
 
-    def _get_draft_last_hidden(self):
-        with torch.no_grad():
-            draft_out = self.draft_llm(
-                input_ids=self.tokens.unsqueeze(0), 
-                output_hidden_states=True, 
-                use_cache=False)
-
-        # get last hidden state
-        return draft_out.hidden_states[-1][0, -1, :].detach().cpu().numpy()
+    def _get_hiddens(self, token_index):
+        obs = []
+        if token_index >= self.max_tokens:
+            token_index = self.max_tokens - 1
+        if self.use_main_hidden_states:
+            obs += [self.conversation.main_hidden_states[token_index]]
+        if self.use_draft_hidden_states:
+            obs += [self.conversation.draft_hidden_states[token_index]]
+        # convert to numpy
+        return np.concatenate(obs)
+    
+    def _encode_prev_accept_reject(self, prev_accept, prev_reject):
+        if self.one_hot_encode_prev:
+            return np.concatenate((
+                np.eye(self.max_tokens_guess)[prev_accept - 1].astype(np.float32),
+                np.eye(self.max_tokens_guess)[prev_reject - 1].astype(np.float32)
+            ))
+        else:
+            return np.array([prev_accept, prev_reject]).astype(np.float32)
 
     def reset(self):
-        conversation_index = np.random.randint(self.n_conversations) + self.conversation_offset
-        indexer = self.conversations_df.loc()
-        self.prompt = indexer[conversation_index].text
-        self.tokens = torch.as_tensor(self.tokenizer.encode(self.prompt)).to(ptu.device)
+        conversation_index = np.random.randint(self.n_conversations)
+        self.conversation = self._parse_item(self.conversations.get(conversation_index))
+        self.token_index = 0
 
-        last_hidden = self._get_draft_last_hidden()
         obs = np.concatenate((
-            last_hidden,
-            np.array([0., 0.])
+            self._get_hiddens(self.token_index),
+            self._encode_prev_accept_reject(0, 0)
         ))
+        
         return obs
-
-    def _tokens_list(self):
-        return self.tokens.cpu().numpy().tolist()
 
     def step(self, action):
         # generate draft
@@ -140,69 +167,32 @@ class SpeculativeDecoding(gym.Env):
             num_tokens = 2 ** action
         else:
             num_tokens = action
-        if num_tokens > 0:
-            draft_out = self.draft_llm.generate(
-                input_ids=self.tokens.unsqueeze(0),
-                max_new_tokens=num_tokens,
-                num_return_sequences=1,
-                use_cache=True,
-                do_sample=False,
-            )
-            draft = draft_out.squeeze(0)[self.tokens.shape[0]:].cpu().numpy().tolist()
+
+        accept_mask = self.conversation.accept_mask[self.token_index:min(self.token_index + num_tokens, self.max_tokens)]
+        if len(accept_mask) == 0:
+            n_accepted = n_rejected = 0
         else:
-            draft = []
-        
-        accepted_draft, done = self._main_model_step_deterministic(
-            self._tokens_list(), draft
-        )
+            n_accepted = np.argmax(accept_mask)
+            if accept_mask[n_accepted] == 0:
+                # no tokens rejected
+                n_accepted = num_tokens
+            n_rejected = num_tokens - n_accepted
 
-        # update tokens
-        self.tokens = torch.cat((
-            self.tokens, 
-            torch.as_tensor(accepted_draft).to(ptu.device)
-        ))
+        reward = self.accepted_tokens_weight * n_accepted - self.rejected_tokens_weight * n_rejected
 
-        draft_accepted_tokens = len(accepted_draft) - 1
-        draft_wasted_tokens = len(draft) - draft_accepted_tokens
+        # we always decode at least one token, but in an actual online setting we 
+        # would not have access to its hidden state. So we need to take the second-
+        # to-last token as our observation.
+        self.token_index += n_accepted
 
-        # compute reward
-        reward = self.accepted_tokens_weight * draft_accepted_tokens - self.rejected_tokens_weight * draft_wasted_tokens
-
-        last_hidden_state = self._get_draft_last_hidden()
-        # append accepted and wasted tokens
         obs = np.concatenate((
-            last_hidden_state,
-            np.array([draft_accepted_tokens, draft_wasted_tokens]).astype(np.float32)
+            self._get_hiddens(self.token_index),
+            self._encode_prev_accept_reject(n_accepted, n_rejected)
         ))
+
+        # we always decode at least one token
+        self.token_index += 1
         
-        done = done or len(self.tokens) >= self.max_tokens
+        done = self.token_index >= self.max_tokens
 
         return obs, reward, done, {}
-
-    def _main_model_step_deterministic(
-            self,
-            prefix: List[int], 
-            draft: List[int]) -> Tuple[List[int], bool]:
-        main_prompts = [prefix]
-        for i in range(len(draft)):
-            main_prompts += [prefix + draft[: i + 1]]
-        
-        main_run = self.main_llm.generate.remote(
-            prompt_token_ids=main_prompts, 
-            sampling_params=self.main_sp, 
-            use_tqdm=False
-        )
-        main_run = ray.get(main_run)
-
-        n = 0
-        sampled_token = main_run[0].outputs[0].token_ids[0]
-        for i, x in enumerate(draft):
-            sampled_token = main_run[i].outputs[0].token_ids[0]
-            if x == sampled_token:
-                n += 1
-            else:
-                break
-
-        done = main_run[n].outputs[0].finish_reason != "length"
-
-        return draft[:n] + [sampled_token], done
