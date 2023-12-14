@@ -1,8 +1,8 @@
 base_config: "rnd"
-env_name: "SpeculativeDecodingLog-v3"
-exp_name: "spec_rnd_many_log_v3"
+env_name: "SpeculativeDecodingLog-v4"
+exp_name: "spec_rnd_many_log_v4"
 total_steps: 200000
-dataset_name: "speculative_decoding_log_rnd_v3"
+dataset_name: "speculative_decoding_log_rnd_v4"
 
 rnd_weight: 1.0
 rnd_network_learning_rate: 0.01

@@ -57,6 +57,7 @@ class SpeculativeDecoding(gym.Env):
         conversation_offset: int = 0,
         accepted_tokens_weight: float = 1.0,
         rejected_tokens_weight: float = 1.0,
+        missed_tokens_weight: float = 0.0,
         logarithmic: bool = False,
         use_main_hidden_states: bool = False,
         use_draft_hidden_states: bool = False,
@@ -71,8 +72,10 @@ class SpeculativeDecoding(gym.Env):
 
         self.max_tokens_guess = max_tokens_guess
         self.max_tokens = max_tokens
+
         self.accepted_tokens_weight = accepted_tokens_weight
         self.rejected_tokens_weight = rejected_tokens_weight
+        self.missed_tokens_weight = missed_tokens_weight
 
         if logarithmic:
             self.action_space = gym.spaces.Discrete(int(math.log2(self.num_actions)) + 1)
@@ -169,6 +172,7 @@ class SpeculativeDecoding(gym.Env):
             num_tokens = action
 
         accept_mask = self.conversation.accept_mask[self.token_index:min(self.token_index + num_tokens, self.max_tokens)]
+        missed_mask = self.converstion.accept_mask[min(self.token_index + num_tokens, self.max_tokens):min(self.token_index + self.max_tokens_guess, self.max_tokens)]
         if len(accept_mask) == 0:
             n_accepted = n_rejected = 0
         else:
@@ -178,7 +182,16 @@ class SpeculativeDecoding(gym.Env):
                 n_accepted = num_tokens
             n_rejected = num_tokens - n_accepted
 
-        reward = self.accepted_tokens_weight * n_accepted - self.rejected_tokens_weight * n_rejected
+        if len(missed_mask) == 0:
+            n_missed = 0
+        else:
+            n_missed = np.argmax(missed_mask)
+            if missed_mask[n_missed] == 0:
+                n_missed = len(missed_mask)
+
+        reward = self.accepted_tokens_weight * n_accepted
+        reward -= self.rejected_tokens_weight * n_rejected
+        reward -= self.missed_tokens_weight * n_missed
 
         # we always decode at least one token, but in an actual online setting we 
         # would not have access to its hidden state. So we need to take the second-
