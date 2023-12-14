@@ -14,13 +14,13 @@ import draftsman.infrastructure.pytorch_util as ptu
 def basic_mlp_config(
     env_name: str,
     exp_name: Optional[str] = None,
-    hidden_size: int = 64,
-    num_layers: int = 2,
+    hidden_size: int = 256,
+    num_layers: int = 4,
     learning_rate: float = 1e-3,
     total_steps: int = 1000000,
     discount: float = 0.95,
     clip_grad_norm: Optional[float] = None,
-    batch_size: int = 128,
+    batch_size: int = 256,
     **kwargs,
 ):
     def make_model(observation_shape: Tuple[int, ...], output_size: int) -> nn.Module:

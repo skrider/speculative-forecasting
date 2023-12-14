@@ -1,9 +1,9 @@
 base_config: "mlp"
-env_name: "SpeculativeDecodingLog-v1"
-exp_name: "spec_mlp_offline"
+env_name: "SpeculativeDecodingLogTest-v1"
+exp_name: "spec_mlp_offline_test"
 training_steps: 200000
 dataset_name: "speculative_decoding_many_1702181521"
 
-hidden_size: 64
+hidden_size: 256
 num_layers: 2
-batch_size: 128
+batch_size: 256

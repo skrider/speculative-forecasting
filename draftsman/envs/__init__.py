@@ -13,7 +13,7 @@ gym.register(
         "max_tokens": 192,
         "accepted_tokens_weight": 1.0,
         "rejected_tokens_weight": 1.0,
-        "logarithmic": True,
+        "logarithmic": False,
         "use_main_hidden_states": False,
         "use_draft_hidden_states": True,
         "one_hot_encode_prev": False
@@ -31,7 +31,7 @@ gym.register(
         "max_tokens": 192,
         "accepted_tokens_weight": 1.0,
         "rejected_tokens_weight": 1.0,
-        "logarithmic": True,
+        "logarithmic": False,
         "use_main_hidden_states": False,
         "use_draft_hidden_states": True,
         "one_hot_encode_prev": False

@@ -3,6 +3,8 @@ from typing import Sequence, Callable, Tuple, Optional
 import torch
 from torch import nn
 
+import math
+
 import numpy as np
 
 import draftsman.infrastructure.pytorch_util as ptu
@@ -58,11 +60,9 @@ class MLPAgent(nn.Module):
         Update the MLP agent.
         """
 
-        # action = accepted + rejected
-        # reward = accepted - rejected
-
         accepted_tokens = ((action + reward) // 2).type(torch.LongTensor).to(ptu.device)
-
+        # print(obs, accepted_tokens)
+        # print(obs.shape, accepted_tokens.shape)
         loss = self.compute_loss(obs, accepted_tokens)
 
         self.optimizer.zero_grad()
@@ -84,4 +84,5 @@ class MLPAgent(nn.Module):
         observation = ptu.from_numpy(np.asarray(observation))[None]
 
         best_action = torch.argmax(self.model(observation)).item()
+
         return best_action
