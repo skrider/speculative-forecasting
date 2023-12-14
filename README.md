@@ -61,3 +61,14 @@ export HUGGING_FACE_HUB_TOKEN=...
 # on the head node
 python draftsman/scripts/run_draftsman.py -cfg experiments/spec/spec_rand.yaml --dataset_dir datasets
 ```
+
+## Generate graphs
+
+Create an environment with tensorboard and matplotlib if you don't have one yet:
+
+```
+conda create --name dman-graph
+conda activate dman-graph
+conda install --solver libmamba python=3.10
+pip install tensorboard tensorflow matplotlib
+```
