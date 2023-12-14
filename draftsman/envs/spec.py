@@ -172,7 +172,7 @@ class SpeculativeDecoding(gym.Env):
             num_tokens = action
 
         accept_mask = self.conversation.accept_mask[self.token_index:min(self.token_index + num_tokens, self.max_tokens)]
-        missed_mask = self.converstion.accept_mask[min(self.token_index + num_tokens, self.max_tokens):min(self.token_index + self.max_tokens_guess, self.max_tokens)]
+        missed_mask = self.conversation.accept_mask[min(self.token_index + num_tokens, self.max_tokens):min(self.token_index + self.max_tokens_guess, self.max_tokens)]
         if len(accept_mask) == 0:
             n_accepted = n_rejected = 0
         else:
