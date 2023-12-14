@@ -172,11 +172,6 @@ def main():
 
     args = parser.parse_args()
 
-    runtime_env = {
-        "env_vars": {"HUGGING_FACE_HUB_TOKEN": os.getenv("HUGGING_FACE_HUB_TOKEN")}
-    }
-    ray.init(runtime_env=runtime_env)
-
     # create directory for logging
     logdir_prefix = "draftsman_"  # keep for autograder
 
