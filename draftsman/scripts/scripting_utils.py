@@ -2,8 +2,8 @@ import yaml
 import os
 import time
 
-import draftsman.env_configs
-from draftsman.infrastructure.logger import Logger
+import fspec.env_configs
+from fspec.infrastructure.logger import Logger
 
 
 def make_config(config_file: str) -> dict:
@@ -12,7 +12,7 @@ def make_config(config_file: str) -> dict:
         config_kwargs = yaml.load(f, Loader=yaml.SafeLoader)
 
     base_config_name = config_kwargs.pop("base_config")
-    return draftsman.env_configs.configs[base_config_name](**config_kwargs)
+    return fspec.env_configs.configs[base_config_name](**config_kwargs)
 
 
 def make_logger(logdir_prefix: str, config: dict) -> Logger:

@@ -1,8 +1,0 @@
-base_config: "awac"
-env_name: "PointmassEasy-v0"
-exp_name: "pointmass_easy_awac"
-training_steps: 100000
-dataset_name: "pointmass_easy_rnd"
-
-hidden_size: 64
-num_layers: 2

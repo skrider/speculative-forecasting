@@ -5,7 +5,7 @@ import torch
 from typing import List, Tuple
 import ray
 import pandas as pd
-from draftsman.infrastructure import pytorch_util as ptu
+from fspec.infrastructure import pytorch_util as ptu
 from dataclasses import dataclass
 
 @dataclass

@@ -5,8 +5,8 @@ from torch import nn
 import torch
 from torch import distributions
 
-from draftsman.infrastructure import pytorch_util as ptu
-from draftsman.infrastructure.distributions import (
+from fspec.infrastructure import pytorch_util as ptu
+from fspec.infrastructure.distributions import (
     make_tanh_transformed,
     make_multi_normal,
 )

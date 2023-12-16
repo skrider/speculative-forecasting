@@ -2,7 +2,7 @@
 from setuptools import setup
 
 setup(
-    name="draftsman",
+    name="fspec",
     version="0.1.0",
-    packages=["draftsman"],
+    packages=["fspec"],
 )

@@ -2,10 +2,10 @@ from collections import OrderedDict
 import numpy as np
 import copy
 import os
-from draftsman.networks.mlp_policy import MLPPolicy
+from fspec.networks.mlp_policy import MLPPolicy
 import gym
 import cv2
-from draftsman.infrastructure import pytorch_util as ptu
+from fspec.infrastructure import pytorch_util as ptu
 from typing import Dict, Tuple, List
 from transformers import LlamaTokenizerFast
 

@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-import draftsman.infrastructure.pytorch_util as ptu
+import fspec.infrastructure.pytorch_util as ptu
 
 
 class StateActionCritic(nn.Module):

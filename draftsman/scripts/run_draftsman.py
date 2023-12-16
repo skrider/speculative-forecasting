@@ -3,7 +3,7 @@ import argparse
 import pickle
 import ray
 
-from draftsman.agents import agents as agent_types
+from fspec.agents import agents as agent_types
 
 import os
 import time
@@ -11,13 +11,13 @@ import time
 import gym
 import numpy as np
 import torch
-from draftsman.infrastructure import pytorch_util as ptu
+from fspec.infrastructure import pytorch_util as ptu
 import tqdm
 
-from draftsman.infrastructure import utils
-from draftsman.infrastructure.logger import Logger
-from draftsman.infrastructure.replay_buffer import ReplayBuffer
-import draftsman.envs as _
+from fspec.infrastructure import utils
+from fspec.infrastructure.logger import Logger
+from fspec.infrastructure.replay_buffer import ReplayBuffer
+import fspec.envs as _
 
 from scripting_utils import make_logger, make_config
 
@@ -173,7 +173,7 @@ def main():
     args = parser.parse_args()
 
     # create directory for logging
-    logdir_prefix = "draftsman_"  # keep for autograder
+    logdir_prefix = "fspec_"  # keep for autograder
 
     config = make_config(args.config_file)
     logger = make_logger(logdir_prefix, config)

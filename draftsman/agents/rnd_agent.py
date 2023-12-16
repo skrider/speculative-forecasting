@@ -5,8 +5,8 @@ import numpy as np
 
 from typing import Callable, List, Tuple
 
-from draftsman.agents.dqn_agent import DQNAgent
-import draftsman.infrastructure.pytorch_util as ptu
+from fspec.agents.dqn_agent import DQNAgent
+import fspec.infrastructure.pytorch_util as ptu
 
 
 def init_network(model):

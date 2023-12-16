@@ -37,7 +37,7 @@ CUDA_VISIBLE_DEVICES=4,5,6,7 ray start --head --num-gpus=4
 export HUGGING_FACE_HUB_TOKEN=...
 
 # run experiment, ensuring no GPUs conflict
-python draftsman/scripts/run_draftsman.py -cfg experiments/spec/spec_rand_honeydew.yaml --which_gpu 3 --dataset_dir datasets
+python fspec/scripts/run_fspec.py -cfg experiments/spec/spec_rand_honeydew.yaml --which_gpu 3 --dataset_dir datasets
 ```
 
 This will output nothing for a while because it is running an eval rollout which takes up to a minute. To avoid this append `-neval 0`
@@ -59,7 +59,7 @@ ray start --address ADDRESS
 export HUGGING_FACE_HUB_TOKEN=...
 
 # on the head node
-python draftsman/scripts/run_draftsman.py -cfg experiments/spec/spec_rand.yaml --dataset_dir datasets
+python fspec/scripts/run_fspec.py -cfg experiments/spec/spec_rand.yaml --dataset_dir datasets
 ```
 
 ## Generate graphs

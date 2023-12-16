@@ -3,9 +3,9 @@ import time
 import ray
 import argparse
 
-from draftsman.agents.dqn_agent import DQNAgent
-import draftsman.env_configs
-from draftsman.envs import SpeculativeDecoding
+from fspec.agents.dqn_agent import DQNAgent
+import fspec.env_configs
+from fspec.envs import SpeculativeDecoding
 
 import os
 import time
@@ -14,13 +14,13 @@ import gym
 from gym import wrappers
 import numpy as np
 import torch
-from draftsman.infrastructure import pytorch_util as ptu
+from fspec.infrastructure import pytorch_util as ptu
 import tqdm
 
-from draftsman.agents import agents
-from draftsman.infrastructure import utils
-from draftsman.infrastructure.logger import Logger
-from draftsman.infrastructure.replay_buffer import (
+from fspec.agents import agents
+from fspec.infrastructure import utils
+from fspec.infrastructure.logger import Logger
+from fspec.infrastructure.replay_buffer import (
     MemoryEfficientReplayBuffer,
     ReplayBuffer,
 )
@@ -124,7 +124,7 @@ def main():
     args = parser.parse_args()
     
     # create directory for logging
-    logdir_prefix = "draftsman_offline_"  # keep for autograder
+    logdir_prefix = "fspec_offline_"  # keep for autograder
 
     config = make_config(args.config_file)
     logger = make_logger(logdir_prefix, config)
