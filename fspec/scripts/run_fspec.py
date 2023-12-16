@@ -149,8 +149,6 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
 
 banner = """
 ======================================================================
-Draftsman
-
 Training an agent for the {env} environment using algorithm {alg}.
 ======================================================================
 """

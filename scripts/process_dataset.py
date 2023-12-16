@@ -1,11 +1,8 @@
-import json
 import torch
 import argparse
 import os
-import sys
 import pandas as pd
 from transformers import LlamaTokenizerFast, LlamaForCausalLM
-from vllm import LLM, SamplingParams
 import numpy as np
 
 def pad(list, n):
