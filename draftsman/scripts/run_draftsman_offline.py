@@ -51,6 +51,8 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
 
     ep_len = env.spec.max_episode_steps or env.max_episode_steps
 
+    render_acc = []
+
     with open(
         os.path.join(args.dataset_dir, f"{config['dataset_name']}.pkl"), "rb"
     ) as f:

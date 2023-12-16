@@ -7,6 +7,7 @@ import gym
 import cv2
 from draftsman.infrastructure import pytorch_util as ptu
 from typing import Dict, Tuple, List
+from transformers import LlamaTokenizerFast
 
 ############################################
 ############################################
@@ -22,26 +23,22 @@ def sample_trajectory(
     obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
     steps = 0
 
+    if render:
+        tokens = env.conversation.input_ids
+        indices = [0]
+    else:
+        tokens = None
+        indices = None
+
     while True:
-        # render an image
-        if render:
-            if hasattr(env, "sim"):
-                img = env.sim.render(camera_name="track", height=500, width=500)[::-1]
-            else:
-                img = env.render(mode="rgb_array")
-
-            if isinstance(img, list):
-                img = img[0]
-
-            image_obs.append(
-                cv2.resize(img, dsize=(250, 250), interpolation=cv2.INTER_CUBIC)
-            )
-
         # TODO use the most recent ob to decide what to do
         ac = policy.get_action(ob)
 
         # TODO: take that action and get reward and next ob
         next_ob, rew, done, info = env.step(ac)
+        
+        if render:
+            indices += [env.token_index]
 
         # TODO rollout can end due to done, or due to max_length
         steps += 1
@@ -66,9 +63,12 @@ def sample_trajectory(
 
     env.close()
 
+
+
     return {
         "observation": np.array(obs, dtype=np.float32),
-        "image_obs": np.array(image_obs, dtype=np.uint8),
+        "tokens": tokens,
+        "indices": indices,
         "reward": np.array(rewards, dtype=np.float32),
         "action": np.array(acs, dtype=np.float32),
         "next_observation": np.array(next_obs, dtype=np.float32),

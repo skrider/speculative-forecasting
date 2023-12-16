@@ -163,7 +163,7 @@ class SpeculativeDecoding(gym.Env):
         ))
         
         return obs
-
+    
     def step(self, action):
         # generate draft
         if self.logarithmic:

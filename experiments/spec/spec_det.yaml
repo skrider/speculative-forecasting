@@ -1,6 +1,6 @@
 base_config: "deterministic"
-env_name: "SpeculativeDecoding-v0"
+env_name: "SpeculativeDecoding-v1"
 exp_name: "spec_det"
 total_steps: 200000
 dataset_name: "speculative_decoding"
-action: 16
+action: 1
